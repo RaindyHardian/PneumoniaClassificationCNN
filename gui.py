@@ -8,6 +8,49 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.models import Sequential, Model, load_model
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dropout, Flatten, Dense, Input
+from tensorflow.nn import relu, sigmoid
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.train import latest_checkpoint
+import numpy as np
+import os
+from PIL import ImageTk, Image
+
+width = 224
+height = 224
+
+# MODEL
+model = Sequential([
+    Conv2D(32, (3,3), activation=relu, input_shape=(width, height, 1)),
+    MaxPooling2D(pool_size=(2,2)),
+    Conv2D(64, (3,3), activation=relu),  
+    MaxPooling2D(pool_size=(2,2)),
+    Conv2D(128, (3,3), activation=relu), 
+    MaxPooling2D(pool_size=(2,2)),
+    Conv2D(128, (3,3), activation=relu), 
+    MaxPooling2D(pool_size=(2,2)),
+    Flatten(),
+#     Dropout(0.4),
+    Dense(512, activation=relu),
+    Dropout(0.3),
+    Dense(256, activation=relu),
+    Dense(1, activation=sigmoid)
+])
+model.compile(
+    optimizer=Adam(),
+    loss='binary_crossentropy',
+    metrics=['accuracy']
+)
+model.summary()
+
+checkpoint_filepath = './Model_checkpoint/ckpt{epoch}.ckpt'
+checkpoint_dir = os.path.dirname(checkpoint_filepath)
+latest = latest_checkpoint(checkpoint_dir)
+print(latest)
+model.load_weights(latest)
 
 
 class Ui_MainWindow(object):
@@ -61,7 +104,19 @@ class Ui_MainWindow(object):
         self.citra.setPixmap(QtGui.QPixmap(self.fname))
 
     def predict(self):
+        image = Image.open(self.fname).convert('L')
+        print(image)
+        color = False
+        width = 224
+        height = 224
+        # if color:
+        #     image = image.convert("RGB")
+        data = np.array(image.resize((width,height), Image.ANTIALIAS)).reshape(1, width, height, 3 if color else 1)/255
+        jwb = ("PNEUMONIA" if model.predict(data) > 0.5 else "NORMAL")
         print("predict: "+ self.fname)
+        print(jwb)
+        _translate = QtCore.QCoreApplication.translate 
+        self.hasil.setText(_translate("MainWindow", jwb)) # ubah label hasil dg hasil predict
 
 if __name__ == "__main__":
     import sys
